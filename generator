@@ -1,5 +1,8 @@
 ## Andy Hutchison
 ## Mostly using fangraphs for the averages and data, and sometimes baseballsavant
+## (done) Essentially using the fact the baseball is a "turn based game" where the pitcher first makes a decision (to a degree) on what and where to pitch how fast,
+## (almost done) the hitter then has a turn where they decide to swing or not, 
+## (not here yet) and fielders decide whether to get which base runners to get out and how based on the hitter's turn
 import random
 pitchtypes = ["Fastball", "Changeup", "Curveball", "Slider", "Cutter", "Knuckleball", "Splitter"]
 styletypes = ["Fireballer", "Knuckleballer", "Crafty"]
