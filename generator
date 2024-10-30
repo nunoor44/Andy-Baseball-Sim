@@ -1,0 +1,368 @@
+## Andy Hutchison
+## Mostly using fangraphs for the averages and data, and sometimes baseballsavant
+import random
+pitchtypes = ["Fastball", "Changeup", "Curveball", "Slider", "Cutter", "Knuckleball", "Splitter"]
+styletypes = ["Fireballer", "Knuckleballer", "Crafty"]
+
+
+
+
+class Pitcher():
+    def __init__(self, name, hand, pitches, vel, stm, fld, brk, clu, ctrl, style):
+        ## pitches is a list of pitch types, hand is handedness, vel is velocity , stm is stamina, fld is fielding, brk is break, clu is clutch, ctrl is control
+        ## Style is one of the style types
+        self.name = name
+        self.hand = hand
+        self.pitches = pitches
+        self.vel = vel
+        self.stm = stm
+        self.fld = fld
+        self.brk = brk
+        self.clu = clu
+        self.ctrl = ctrl
+        self.style = style
+        if stm < 35 and clu < 50:
+            self.type = "Reliever"
+        elif stm < 35 and clu >= 50:
+            self.type = "Closer"
+        else:
+            self.type = "Starter"
+        
+        if style == "Fireballer":
+            self.fb_odds = 0.57
+            self.off_odds = 0.43
+            self.kn_odds = 0
+        elif style == "Knuckleballer":
+            self.fb_odds = 0.2
+            self.kn_odds = 0.75
+            self.off_odds = 0.05
+        else:
+            self.fb_odds = 0.4
+            self.off_odds = 0.6
+            self.kn_odds = 0
+        pitches2 = pitches.copy()
+        # add an if "fastball"
+        pitches2.remove("Fastball")
+        self.offspeeds = pitches2
+        self.avgfst = 88 + vel / 10
+        self.avgcb = 70 + vel / 15
+        self.avgchg = 80 + vel / 10
+        self.avgsl = 80 + vel / 10
+        self.avgcut = 85 + vel / 10
+        self.avgkn = 65 + vel / 20
+        self.avgspl = 80 + vel / 10
+        self.alloffvels = [self.avgchg, self.avgcb, self.avgsl, self.avgcut, self.avgkn, self.avgspl]
+    def __str__(self):
+        str1 = f"{self.name}: {self.hand}, {self.type}, Pitch Types {self.pitches}, Velocity {self.vel}, "
+        str2 = f"Stamina {self.stm}, Pitch Break {self.brk}, Clutch {self.clu}, Control {self.ctrl}, Fielding {self.fld}. Style {self.style}"
+        return str1 + str2
+    
+
+class Batter():
+    def __init__(self, name, pos, thrwhand, bathand, vis, dis, lpwr, rpwr, lcon, rcon, bunt, spd, stl, fld, ctch, blk, armacc, armpwr, clu):
+        ## hand is handedness, vis is vision, dis is discipline, pwr is power against that pitcher type, same with con for contact, bunt is bunting, spd is speed
+        ## stl is stealing (figure out what it does), fld is fielding (impacts errors/drops), ctch is catching (mainly for catchers), blk is blocking (mainly for catchers)
+        ## armacc is throw accuracy for defence, and armpwr is throw power for defense
+        ## I think plate discipline should be for taking balls better (correct ball take rate and swing at strikes only rate)
+        ## Plate vision should be for hitting at the right speed (swing early for fastball, etc) and hitting breaking balls
+        self.name = name
+        self.pos = pos
+        self.bathand = bathand
+        self.thrwhand = thrwhand
+        self.vis = vis
+        self.dis = dis
+        self.lpwr = lpwr
+        self.rpwr = rpwr
+        self.lcon = lcon
+        self.rcon = rcon
+        self.bunt = bunt
+        self.spd = spd
+        self.stl = stl
+        self.fld = fld
+        self.ctch = ctch
+        self.blk = blk
+        self.armacc = armacc
+        self.armpwr = armpwr
+        self.clu = clu
+    def __str__(self):
+        str1 = f"{self.name}: {self.bathand}/{self.thrwhand}, {self.pos}, Power(L/R) {self.lpwr}/{self.rpwr}, Contact(L/R) {self.lcon}/{self.rcon}, "
+        str2 = f"Plate Vision {self.vis}, Plate Discipline {self.dis}, Bunt {self.bunt}, Speed {self.spd}, Steal {self.stl}, "
+        str3 = f"Catching {self.ctch}, Blocking {self.blk}, Throw Accuracy {self.armacc}, Throw Power {self.armpwr}, Clutch {self.clu}"
+        return str1 + str2 + str3
+
+## Must split into pitch function
+def pitch(hitter, pitcher, defense = None):
+    #the pitch:
+    ## needs to utilize break
+    ## save clutch and stamina until you have a game base (way to tell time in game and situation)
+    pitchgen = random.randint(1, 100) / 100
+    offspd_select = random.randint(0, len(pitcher.offspeeds) - 1)
+    velmod = random.normalvariate(1, 0.015)
+    if pitchgen <= pitcher.fb_odds:
+        typethrown = "Fastball"
+    elif (pitcher.style != "Knuckleballer") and (pitchgen > pitcher.fb_odds):
+        typethrown = pitcher.offspeeds[offspd_select]
+    elif (pitcher.style == "knuckleballer") and (pitchgen > pitcher.fb_odds) and (pitchgen <= pitcher.fb_odds + pitcher.off_odds):
+        typethrown = "Knuckleball"
+    else:
+        typethrown = pitcher.offspeeds[offspd_select]
+    if typethrown == "Fastball":
+        speed = round(velmod * pitcher.avgfst, 2)
+        pitchthrown = str(speed) + "MPH " + typethrown
+    else:
+        speed = round(velmod * pitcher.alloffvels[offspd_select], 2)
+        pitchthrown = str(speed) + "MPH " + typethrown
+    
+    loc_val = random.normalvariate(1, 0.15) * (pitcher.ctrl / 100)
+    loc_thresh = random.uniform(0, 1)
+    if loc_val <= loc_thresh:
+        location = "Ball"
+    else: 
+        location = "Strike"
+    print(pitchthrown + " " + location)
+    return([typethrown, speed, location])
+    
+    ## Location works fairly well, check the stats at 25, 50, 75, and 100 ctrl to see how much it impacts and keep track of pairs (FB, FS, CB, CS)
+    ## Tested ^: sd of 0.15 works best in loc_val with the relationship between ctrl and ball/strike ratio, seems to be pretty random, but fairly consistent with ctrl rating.
+
+def hit(hitter, pitcher, throw, defense = None):
+    # relevant stats: bathand, vis, dis, lpwr, rpwr, lcon, rcon, bunt, spd, stl, clu
+    # Pitcher stats: hand, pitches, vel, stm, brk, clu, ctrl, style
+    ## throw is the pitch generated by pitch function
+    ## don't make con or pwr different by any multiplier, just leave it to be based on ratings:
+    if pitcher.hand == "LHP":
+        con_used = hitter.lcon
+        pow_used = hitter.lpwr
+    else:
+        con_used = hitter.rcon
+        pow_used = hitter.rpwr
+    
+    ## Use .100 as a low end BA and go up to around .350
+    ## must also consider how many balls are fouled off <- do this by adding different types of contact types
+    ## Low outside zone contact % is around 37%, highest looks like 85%
+    ## Low in zone contact % is 65%, and high is 95%
+    ## For the contact % use contact ^^
+    ## Swing at pitches outside the zone low 15%, high end is about 50%
+    ## Swing at pitches in the zone low is 50%, high is 85%
+    ## For swing % use discipline ^^ (high discipline = low swing outside of zone % and high swing inside zone %)
+    ## On a given swing there are 3 outcomes: Foul ball (35% normally distributed), in-play (40% normally distributed), or miss (25% normally distributed)
+    ## In-play can be broken down into different types of contact (solid, weak, etc)
+    ## Probability contact will be made (basically contact +- a small rng normal multiplier). Note this sd means nothing it's just a guess:
+    contact_percent_mult = random.normalvariate(1, 0.02)
+    if throw[2] == "Ball":
+        contact_percent = (37 + con_used / 48) * contact_percent_mult
+    else:
+        contact_percent = (65 + con_used / 30) * contact_percent_mult
+
+    ## Probability of a swing (discipline stat):
+    ## Swing likelihood
+    ## Make it vary slightly using a normal variate for some randomness. Note this sd means nothing it's just a guess
+    swinglik_mult = random.normalvariate(1, 0.04)
+    if throw[2] == "Strike":
+        # it's plus here since having good dis means swinging at strikes when they are strikes
+        swinglik = (50 + hitter.dis / 35) * swinglik_mult
+    else:
+        # it's minus here since a lower swing percent on balls is better, so when dis increases, swing % on balls should decrease
+        swinglik = (50 - hitter.dis / 35) * swinglik_mult
+
+    ## Create method (using random values from 0 - 100 to determine if there is a swing, and then if there is contact)
+    swing_decision_maker = random.randint(0, 100)
+    if swinglik <= swing_decision_maker:
+        swing = True
+    else:
+        swing = False
+    # Could add extra case in future for check swing
+    
+    ## This will determine if contact is made using a similar method to the one above
+    contact_decider = random.randint(0, 100)
+    if swing:
+        if contact_percent <= contact_decider:
+            contact = True
+        elif contact_percent > contact_decider:
+            contact = False
+
+    ## Determine what type of contact is made
+    ## Use fangraphs batted ball data for this
+    ## Types of contact: Weak (gb, pu, f), poor (gb, pu fb, f), solid (gb, fb, ld, f), good (gb, fb, ld, f), great (gb, fb, ld, f), perfect (fb, ld) 
+    ## Different odds of each outcome for each type of hit 
+    ## Get data from baseball reference
+    contact_types = ["Weak", "Poor", "Solid", "Good", "Great", "Perfect"]
+    original_probabilities = {
+        'Weak': 0.1,
+        'Poor': 0.2,
+        'Solid': 0.3,
+        'Good': 0.25,
+        'Great': 0.1,
+        'Perfect': 0.05
+    }
+    con_type_determine = random.uniform(0,1)
+    if contact:
+        new_probs = {}
+        for val in original_probabilities:
+            if val == 'Weak' or val == "Poor":
+                new_probs[val] = original_probabilities[val] * (1 - pow_used / 2)
+            elif val == 'Solid' or val == 'Good':
+                new_probs[val] = original_probabilities[val]
+            else:
+                new_probs[val] = original_probabilities[val] * (1 + pow_used / 2)
+        adjusted_odds = {}
+        for prob in new_probs:
+            adjusted_odds[prob] = new_probs[prob] / sum(new_probs.values())
+        # The above sets up the probabilities for each type of contact may need to change the /2 if not enough impact on contact outcome
+        # or can change original probs
+        if con_type_determine < adjusted_odds["Weak"]:
+            con_type = "Weak"
+        elif con_type_determine < (adjusted_odds["Poor"] + adjusted_odds["Weak"]) and con_type_determine >= adjusted_odds["Weak"]:
+            con_type = "Poor"
+        elif con_type_determine < (adjusted_odds["Solid"] + adjusted_odds["Poor"] + adjusted_odds["Weak"]) and con_type_determine >= adjusted_odds["Poor"]:
+            con_type = "Solid"
+        elif (con_type_determine < (adjusted_odds["Good"] + adjusted_odds["Solid"] + adjusted_odds["Poor"] + adjusted_odds["Weak"]) 
+        and con_type_determine >= adjusted_odds["Solid"]):
+            con_type = "Good"
+        elif (con_type_determine < (adjusted_odds["Great"] + adjusted_odds["Good"] + adjusted_odds["Solid"] + adjusted_odds["Poor"] + adjusted_odds["Weak"]) 
+        and con_type_determine >= adjusted_odds["Good"]):
+            con_type = "Great"
+        elif (con_type_determine < (adjusted_odds["Great"] + adjusted_odds["Great"] + adjusted_odds["Good"] + adjusted_odds["Solid"] + adjusted_odds["Poor"] + 
+                                    adjusted_odds["Weak"]) and con_type_determine >= adjusted_odds["Great"]):
+            con_type = "Perfect"
+
+        ## Timing needed to help determine where ball goes (Left, Middle, Right)
+        ## Good vision is above 75 and means the timing will be good
+
+        ## BABIP randomizer is good for if a play is made on a ball
+        ## pwr + con_type combination would be good for distance
+
+        # Direction:
+            ## Fast pitches:
+        if hitter.vis >= 75 and throw[1] >= 95.4 and hitter.bathand == "R":
+            left_chance = 0.35
+            middle_chance = 0.35
+            right_chance = 0.3
+        elif hitter.vis >= 75 and throw[1] >= 95.4 and hitter.bathand == "L":
+            left_chance = 0.3
+            middle_chance = 0.35
+            right_chance = 0.35        
+        elif hitter.vis < 75 and throw[1] >= 95.4 and hitter.bathand == "R":
+            left_chance = 0.1
+            middle_chance = 0.3
+            right_chance = 0.6
+        elif hitter.vis < 75 and throw[1] >= 95.4 and hitter.bathand == "L":
+            left_chance = 0.6
+            middle_chance = 0.3
+            right_chance = 0.1
+
+            ## Medium speed pitches:
+        elif hitter.vis >= 75 and throw[1] < 95.4 and throw[1] >= 83 and hitter.bathand == "R":
+            left_chance = 0.3
+            middle_chance = 0.4
+            right_chance = 0.3
+        elif hitter.vis >= 75 and throw[1] < 95.4 and throw[1] >= 83 and hitter.bathand == "L":
+            left_chance = 0.3
+            middle_chance = 0.4
+            right_chance = 0.3
+        elif hitter.vis < 75 and throw[1] < 95.4 and throw[1] >= 83 and hitter.bathand == "R":
+            left_chance = 0.4
+            middle_chance = 0.3
+            right_chance = 0.3
+        elif hitter.vis < 75 and throw[1] < 95.4 and throw[1] >= 83 and hitter.bathand == "L":
+            left_chance = 0.3
+            middle_chance = 0.3
+            right_chance = 0.4
+
+            ## Slow pitches:
+        elif hitter.vis >= 75 and throw[1] < 83 and hitter.bathand == "R":
+            left_chance = 0.35
+            middle_chance = 0.35
+            right_chance = 0.3
+        elif hitter.vis >= 75 and throw[1] < 83 and hitter.bathand == "L":
+            left_chance = 0.3
+            middle_chance = 0.35
+            right_chance = 0.35
+        elif hitter.vis < 75 and throw[1] < 83 and hitter.bathand == "R":
+            left_chance = 0.5
+            middle_chance = 0.35
+            right_chance = 0.15
+        elif hitter.vis < 75 and throw[1] < 83 and hitter.bathand == "L":
+            left_chance = 0.15
+            middle_chance = 0.35
+            right_chance = 0.5
+
+        # Distance (maybe think of another way to frame this):
+        if con_type == "Weak":
+            weak_outcome = random.randint(1, 100)
+            if weak_outcome <= random.normalvariate(14, 1.5):
+                hit_type = "Popup"
+            else:
+                hit_type = "Groundball"
+        elif con_type == "Poor":
+            poor_outcome = random.randint(1, 73)
+            poor_low = random.normalvariate(7, 1.5)
+            poor_high = random.normalvariate(50, 1.75)
+            if poor_outcome <= poor_low:
+                hit_type = "Popup"
+            elif poor_outcome >= poor_high:
+                hit_type = "Flyball"
+            else:
+                hit_type = "Groundball"
+        elif con_type == "Solid":
+            solid_outcome = random.randint(1, 97)
+            solid_low = random.normalvariate(24, 1.5)
+            solid_high = random.normalvariate(67, 1.75)
+            if solid_outcome <= solid_low:
+                hit_type = "Line Drive"
+            elif solid_outcome >= solid_high:
+                hit_type = "Flyball"
+            else:
+                hit_type = "Groundball"
+        elif con_type == "Good":
+            good_outcome = random.randint(1, 97)
+            good_low = random.normalvariate(24, 1.5)
+            good_high = random.normalvariate(67, 1.75)
+            if good_outcome <= good_low:
+                hit_type = "Line Drive"
+            elif good_outcome >= good_high:
+                hit_type = "Flyball"
+            else:
+                hit_type = "Groundball"
+        elif con_type == "Great":
+            great_outcome = random.randint(1, 97)
+            great_low = random.normalvariate(24, 1.5)
+            great_high = random.normalvariate(67, 1.75)
+            if great_outcome <= great_low:
+                hit_type = "Line Drive"
+            elif great_outcome >= great_high:
+                hit_type = "Flyball"
+            else:
+                hit_type = "Groundball"
+        else:
+            perfect_outcome = random.randint(1, 50)
+            if perfect_outcome <= random.normalvariate(24, 1.5):
+                hit_type = "Line Drive"
+            else: 
+                hit_type = "Flyball"
+
+        ## Finished with outcome type selction, now just need what the fielder does with the ball.
+        # Up the middle should get a little bonus if possible, and better contact types shoudl be better off as well
+        # maybe set up something like the fielder play outcome probs for each type of contact and each outcome (fb, ld, etc)
+        # - to the last point, could add something in what is above since it's already given
+
+        ## For fouls:
+        if con_type != "Perfect" and random.randint(1, 100) < 20:
+            outcome = "Foul"
+        # figure out the else, it'll be the final outcome: contact?, type of contact, direction, outcome, ball/strike
+        #else:
+
+
+    outcome_types = ["Foul", "Groundball", "Popup", "Flyball", "Line Drive"]
+    
+    
+
+
+    
+        
+    
+
+print(pitch(Batter("Cisco Knight", "CF", "R", "S", 70, 20, 88, 99, 80, 95, 5, 98, 97, 84, 22, 21, 77, 75, 100), 
+            Pitcher("Cisco Knight", "RHP", ["Fastball", "Changeup"], 100, 80, 60, 88, 99, 75, "Fireballer"))
+            )
+
